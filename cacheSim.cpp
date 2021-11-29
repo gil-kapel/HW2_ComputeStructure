@@ -62,6 +62,9 @@ int main(int argc, char **argv) {
 		}
 	}
 
+	cache L1;
+	cache L2;
+	
 	while (getline(file, line)) {
 
 		stringstream ss(line);
@@ -92,6 +95,10 @@ int main(int argc, char **argv) {
 	double L1MissRate;
 	double L2MissRate;
 	double avgAccTime;
+
+	L1.updateValue(&L1MissRate);
+	L2.updateValue(&L2MissRate);
+
 
 	printf("L1miss=%.03f ", L1MissRate);
 	printf("L2miss=%.03f ", L2MissRate);
