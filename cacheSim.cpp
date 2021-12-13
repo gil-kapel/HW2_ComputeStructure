@@ -90,7 +90,49 @@ int main(int argc, char **argv) {
 
 		// DEBUG - remove this line
 		cout << " (dec) " << num << endl;
+		
+		if(L1.isBlockInCache(calculateBlockId(num))){
+			if(operation == 'w'){
+				if(L1.need to make the block dirty()){    /*****************************/
+					L1.makeTheBlockDirty(num);
+				}
+			}
+			else if(L1.isBlockDirty(num)){
+				do_something;                             /*****************************/
+			}
+			L1.updateHit();
+		}
+		else if(L2.isBlockInCache(calculateBlockId(num))){
+			if(operation == 'w'){
+				if(L2.need to make the block dirty()){    /*****************************/
+					L2.makeTheBlockDirty(num);
+				}
+			}
+			else if(L1.isBlockDirty(num)){
+				do_something; /*****************************/
+			}
+			L2.updateHit();
+		}
+		else 
+			if(operation == 'w'){
+				if(L2.need to make the block dirty()){    /*****************************/
+					L2.makeTheBlockDirty(num);
+				}
+			}
+			else if(L1.isBlockDirty(num)){
+				do_something; /*****************************/
+			}
+			L2.updateHit();
 
+		Search num in L1
+		if we found it - write or read and update according to the policy
+		else Search num in L2
+			if we found it - write or read and update accoring to the policy
+			else go to memory (according to the policy) {
+				write or read
+				build new block
+				bring the block to L2 and L1 
+			}
 	}
 
 	double L1MissRate;
