@@ -14,6 +14,10 @@ using std::cerr;
 using std::ifstream;
 using std::stringstream;
 
+#define NO+_WRITE_ALLOCATE 0
+#define WRITE_ALLOCATE 1
+
+
 int main(int argc, char **argv) {
 
 	if (argc < 19) {
@@ -63,8 +67,8 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	cache L1;
-	cache L2;
+	Cache L1(L1Size, BSize, L1Assoc, WrAlloc, L1Cyc, MemCyc);
+	Cache L2(L2Size, BSize, L2Assoc, WrAlloc, L2Cyc, MemCyc);
 	
 	while (getline(file, line)) {
 
@@ -91,41 +95,82 @@ int main(int argc, char **argv) {
 		// DEBUG - remove this line
 		cout << " (dec) " << num << endl;
 		
-		if(L1.isBlockInCache(calculateBlockId(num))){
-			if(operation == 'w'){
-				if(L1.need to make the block dirty()){    /*****************************/
-					L1.makeTheBlockDirty(num);
+		if(operation == 'w'){
+			if(WrAlloc == WRITE_ALLOCATE){
+				if(L1.isBlockInCache(num)){ 							 /* Is block in L1 Cache? */
+					block _block1 = L1.getBlockFromAddr(num);
+					// _block1.writeToBlock();
+					_block1.setBlockDirty(true);
+				}
+				else{ 
+					block _block1 = L1.get_LRU_BlockFromSameLine(num);
+					if(_block1 != nullptr){ 							/* Evacuate the block that will be replaced */
+						if(_block1.isBlockDirty()){
+							L2.updateBlock(_block1); /* if block 1 was dirty, block 2 must become dirty itself*/
+						}
+						L1.removeBlock(_block1);
+					}
+					if(L2.isBlockInCache(num)){ 						/* Is block in L2 Cache? */
+						block _block2 = L2.getBlockFromAddr(num);
+						// _block2.writeToBlock();
+						_block2.setBlockDirty(true);
+						L1.addBlock(num);
+					}
+					else{
+						block _block2 = L2.get_LRU_BlockFromSameLine(num);
+						if(_block2 != nullptr){
+							if(_block2.isBlockDirty()){
+								/* update memory*/
+							}
+							L2.removeBlock(_block1);
+						}
+						L1.addBlock(block(num));
+						L2.addBlock(block(num, DIRTY));
+					}
 				}
 			}
-			else if(L1.isBlockDirty(num)){
-				do_something;                             /*****************************/
+			else if(WrAlloc == NO_WRITE_ALLOCATE){
+				if(L1.isBlockInCache(num)){ 							 /* Is block in L1 Cache? */
+					block _block1 = L1.getBlockFromAddr(num);
+					// _block1.writeToBlock();
+					_block1.setBlockDirty(true);
+				}
+				else if(L2.isBlockInCache(num)){
+						block _block2 = L2.getBlockFromAddr(num);
+						// _block2.writeToBlock();
+						_block2.setBlockDirty(true);
+				}
+				// else write to memory
 			}
-			L1.updateHit();
+		if(operation == 'r'){
+			if(L1.isBlockInCache(num)){ 							 /* Is block in L1 Cache? */
+				// read
+			}
+			else{ 
+				block _block1 = L1.get_LRU_BlockFromSameLine(num);
+				if(_block1 != nullptr){ 							/* Evacuate the block that will be replaced */
+					if(_block1.isBlockDirty()){
+						L2.updateBlock(_block1); /* if block 1 was dirty, block 2 must become dirty itself*/
+					}
+					L1.removeBlock(_block1);
+				}
+				if(L2.isBlockInCache(num)){ 						/* Is block in L2 Cache? */
+					L1.addBlock(num);
+				}
+				else{
+					block _block2 = L2.get_LRU_BlockFromSameLine(num);
+					if(_block2 != nullptr){
+						if(_block2.isBlockDirty()){
+							/* update memory*/
+						}
+						L2.removeBlock(_block1);
+					}
+					L1.addBlock(block(num));
+					L2.addBlock(block(num));
+				}
+			}
 		}
-		else if(L2.isBlockInCache(calculateBlockId(num))){
-			if(operation == 'w'){
-				if(L2.need to make the block dirty()){    /*****************************/
-					L2.makeTheBlockDirty(num);
-				}
-			}
-			else if(L1.isBlockDirty(num)){
-				do_something; /*****************************/
-			}
-			L2.updateHit();
-		}
-		else 
-			if(operation == 'w'){
-				if(L2.need to make the block dirty()){    /*****************************/
-					L2.makeTheBlockDirty(num);
-				}
-			}
-			else if(L1.isBlockDirty(num)){
-				do_something; /*****************************/
-			}
-			L2.updateHit();
-
-		Search num in L1
-		if we found it - write or read and update according to the policy
+/*
 		else Search num in L2
 			if we found it - write or read and update accoring to the policy
 			else go to memory (according to the policy) {
@@ -134,6 +179,7 @@ int main(int argc, char **argv) {
 				bring the block to L2 and L1 
 			}
 	}
+*/
 
 	double L1MissRate;
 	double L2MissRate;
