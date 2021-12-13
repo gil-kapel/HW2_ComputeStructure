@@ -5,14 +5,18 @@ class block{
     int block_id;
     vector<int> block_data;
     bool dirty_bit;
+    int last_access;
 public:
     block(const int* first_ptr);
     ~block();
     block(const block& block);
     block& operator=(const block& block);
+    bool operator>(const block& block);
+    bool operator<(const block& block);
     block& getBlockByID(int block_id);
-    void updateBlock(const block& new_block);
+    void updateBlock(const block& new_block); 
     int getValue(int offset); 
+    int getPriority() { return last_access; }
 };
 
 class cache{
@@ -36,6 +40,7 @@ public:
     double calculateMissRate();
     double calculateHitRate(){ return 1 - calculateMissRate(); }
     double averageAccessTime();
+    void replaceBlock(&&block.......); // When a block is removed, it mast be allocated to the lower levels
 };
 
 cache L1;
