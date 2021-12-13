@@ -4,6 +4,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include "cache.h"
 
 using std::FILE;
 using std::string;
