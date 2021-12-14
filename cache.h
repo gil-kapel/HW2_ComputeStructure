@@ -38,11 +38,10 @@ public:
     void makeClean();
     void readBlock();
     void writeToBlock();
-    bool isAddrInBlock(const uint32_t addr);
-    uint32_t getAddr(){ return first_addr; }
-    bool compareBlockAddress(const uint32_t addr){ return block_id == getBlockIDByAddr(addr, block_size); };
-    bool isBlockDirty(){ return dirty_bit; };
-    uint32_t getFirstAddr() const {return first_addr;};
+    bool isAddrInBlock(const uint32_t addr)const;
+    uint32_t getAddr()const { return first_addr; }
+    bool compareBlockAddress(const uint32_t addr)const { return block_id == getBlockIDByAddr(addr, block_size); }
+    bool isBlockDirty()const { return dirty_bit; }
     //int getValue(int offset); 
     //int getPriority() { return last_access; }
 };
@@ -99,8 +98,7 @@ void Block::makeClean()
     this->dirty_bit = false;
 }
 
-bool Block::isAddrInBlock(const uint32_t addr)
-{
+bool Block::isAddrInBlock(const uint32_t addr)const{
     return (addr < first_addr + block_size && addr >= first_addr);
 }
 
@@ -162,11 +160,9 @@ public:
         line = vector<Block>(size);
     }
     ~CacheEntry() = default;
-    vector<Block> getLine(){ return line; }
+    vector<Block>& getLine(){ return line; }
     int getLineId() { return line_id; }
 };
-
-
 
 class Cache{
     vector<CacheEntry> cache_data;
@@ -174,16 +170,16 @@ class Cache{
     int assoc;
     int missCount;
     int hitCount;
-    int line_in_use;
 public:
     int block_size;
     Cache(int cache_size, int block_size, int assoc): cache_size(cache_size), block_size(block_size), assoc(assoc){
         missCount = 0;
         hitCount = 0;
-        line_in_use = 0;
+        int line_in_use = 0;
         cache_data = vector<CacheEntry>(cache_size / (block_size * assoc));
         for(auto &line: cache_data){
             line = CacheEntry(assoc, line_in_use);
+            line_in_use++;
         }
     }
     ~Cache() = default;
@@ -192,7 +188,7 @@ public:
     void removeBlock(const Block& block);
     Block& getBlockFromAddr(const uint32_t addr);
     Block& get_LRU_BlockFromSameLine(const uint32_t addr);
-    vector<Block> findLine(const uint32_t addr);
+    vector<Block>& findLine(const uint32_t addr);
     void updateBlock(const Block& block);
     void updateValue(double* miss_rate) { *miss_rate = missCount / (missCount + hitCount) ;}
     double calculateMissRate() { return missCount / (missCount + hitCount); } /* Need to verify the equation */
@@ -203,7 +199,7 @@ public:
 
 bool Cache::isBlockInCache(const uint32_t addr){
     for(auto &line: cache_data){
-        for(auto &block: line){
+        for(auto &block: line.getLine()){
             if(block.compareBlockAddress(addr)){
                 hitCount++;
                 /* Another act? */
@@ -215,8 +211,8 @@ bool Cache::isBlockInCache(const uint32_t addr){
 }
 
 void Cache::addBlock(const Block& block){
-    Block new_block = block;
     vector<Block> line = findLine(block.getAddr());
+    const Block new_block = block;
     line.insert(new_block);
 }
 
@@ -227,7 +223,7 @@ void Cache::removeBlock(const Block& block){
 
 Block& Cache::getBlockFromAddr(const uint32_t addr){
     for(auto &line: cache_data){
-        for(auto &block: line){
+        for(auto &block: line.getLine()){
             if(block.compareBlockAddress(addr)){
                 return block;
             }
@@ -238,7 +234,7 @@ Block& Cache::getBlockFromAddr(const uint32_t addr){
 
 Block& Cache::get_LRU_BlockFromSameLine(const uint32_t addr){
     for(auto &line: cache_data){
-        for(auto &block: line){
+        for(auto &block: line.getLine()){
             if(block.willMappedToSameLine(addr)){
                 return block;
             }
@@ -247,11 +243,11 @@ Block& Cache::get_LRU_BlockFromSameLine(const uint32_t addr){
     return nullptr;
 }
 
-vector<Block> Cache::findLine(const uint32_t addr){
+vector<Block>& Cache::findLine(const uint32_t addr){
     for(auto &line: cache_data){
-        for(auto &block: line){
+        for(auto &block: line.getLine()){
             if(block.compareBlockAddress(addr)){
-                return line;
+                return line.getLine();
             }
         }
     }
@@ -260,7 +256,7 @@ vector<Block> Cache::findLine(const uint32_t addr){
 
 void Cache::updateBlock(const Block& block){
     for(auto &line: cache_data){
-        for(auto &old_block: line){
+        for(auto &old_block: line.getLine()){
             if(old_block.compareBlockAddress(block.getAddr())){
                 // old_block = block;
                 old_block.writeToBlock();
