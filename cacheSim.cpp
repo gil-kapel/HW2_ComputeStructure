@@ -105,7 +105,7 @@ int main(int argc, char **argv) {
 				}
 				else{ 
 					Block _block1 = L1.get_LRU_BlockFromSameLine(num);
-					if(&_block1 != nullptr){ 							/* Evacuate the Block that will be replaced */
+					if(_block1.getBlockID() != -1){ 							/* Evacuate the Block that will be replaced */
 						if(_block1.isBlockDirty()){
 							L2.updateBlock(_block1); /* if Block 1 was dirty, Block 2 must become dirty itself*/
 						}
@@ -120,7 +120,7 @@ int main(int argc, char **argv) {
 					}
 					else{
 						Block _block2 = L2.get_LRU_BlockFromSameLine(num);
-						if(&_block2 != nullptr){
+						if(_block2.getBlockID() != -1){
 							if(_block2.isBlockDirty()){
 								/* update memory*/
 							}
@@ -159,7 +159,7 @@ int main(int argc, char **argv) {
 			}
 			else{ 
 				Block _block1 = L1.get_LRU_BlockFromSameLine(num);
-				if(&_block1 != nullptr){ 							/* Evacuate the Block that will be replaced */
+				if(_block1.getBlockID() != -1){ 							/* Evacuate the Block that will be replaced */
 					if(_block1.isBlockDirty()){
 						L2.updateBlock(_block1); /* if Block 1 was dirty, Block 2 must become dirty itself*/
 					}
@@ -172,7 +172,7 @@ int main(int argc, char **argv) {
 				}
 				else{
 					Block _block2 = L2.get_LRU_BlockFromSameLine(num);
-					if(&_block2 != nullptr){
+					if(_block2.getBlockID() != -1){
 						if(_block2.isBlockDirty()){
 							/* update memory*/
 						}
