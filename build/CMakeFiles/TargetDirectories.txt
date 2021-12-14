@@ -1,3 +1,0 @@
-D:/Limud/Third_year/Computer_structure/HW2/build/CMakeFiles/cache_pred.dir
-D:/Limud/Third_year/Computer_structure/HW2/build/CMakeFiles/edit_cache.dir
-D:/Limud/Third_year/Computer_structure/HW2/build/CMakeFiles/rebuild_cache.dir

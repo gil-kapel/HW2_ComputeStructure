@@ -14,7 +14,7 @@ using std::cerr;
 using std::ifstream;
 using std::stringstream;
 
-#define NO+_WRITE_ALLOCATE 0
+#define NO_WRITE_ALLOCATE 0
 #define WRITE_ALLOCATE 1
 
 
@@ -40,6 +40,9 @@ int main(int argc, char **argv) {
 
 	unsigned MemCyc = 0, BSize = 0, L1Size = 0, L2Size = 0, L1Assoc = 0,
 			L2Assoc = 0, L1Cyc = 0, L2Cyc = 0, WrAlloc = 0;
+
+	int ic = 0 ; //instruction count
+	int totalAccTime = 0;
 
 	for (int i = 2; i < 19; i += 2) {
 		string s(argv[i]);
@@ -67,11 +70,10 @@ int main(int argc, char **argv) {
 		}
 	}
 
-	Cache L1(L1Size, BSize, L1Assoc, WrAlloc, L1Cyc, MemCyc);
-	Cache L2(L2Size, BSize, L2Assoc, WrAlloc, L2Cyc, MemCyc);
+	Cache L1(L1Size, BSize, L1Assoc);
+	Cache L2(L2Size, BSize, L2Assoc);
 	
 	while (getline(file, line)) {
-
 		stringstream ss(line);
 		string address;
 		char operation = 0; // read (R) or write (W)
@@ -97,86 +99,104 @@ int main(int argc, char **argv) {
 		
 		if(operation == 'w'){
 			if(WrAlloc == WRITE_ALLOCATE){
-				if(L1.isBlockInCache(num)){ 							 /* Is block in L1 Cache? */
-					block _block1 = L1.getBlockFromAddr(num);
-					// _block1.writeToBlock();
-					_block1.setBlockDirty(true);
+				if(L1.isBlockInCache(num)){ 							 /* Is Block in L1 Cache? */
+					Block _block1 = L1.getBlockFromAddr(num);
+					_block1.writeToBlock();
 				}
 				else{ 
-					block _block1 = L1.get_LRU_BlockFromSameLine(num);
-					if(_block1 != nullptr){ 							/* Evacuate the block that will be replaced */
+					Block _block1 = L1.get_LRU_BlockFromSameLine(num);
+					if(&_block1 != nullptr){ 							/* Evacuate the Block that will be replaced */
 						if(_block1.isBlockDirty()){
-							L2.updateBlock(_block1); /* if block 1 was dirty, block 2 must become dirty itself*/
+							L2.updateBlock(_block1); /* if Block 1 was dirty, Block 2 must become dirty itself*/
 						}
 						L1.removeBlock(_block1);
 					}
-					if(L2.isBlockInCache(num)){ 						/* Is block in L2 Cache? */
-						block _block2 = L2.getBlockFromAddr(num);
-						// _block2.writeToBlock();
-						_block2.setBlockDirty(true);
-						L1.addBlock(num);
+					if(L2.isBlockInCache(num)){ 						/* Is Block in L2 Cache? */
+						Block _block2 = L2.getBlockFromAddr(num);
+						_block2.writeToBlock();
+						Block new_block = Block(_block2);
+						new_block.makeClean();
+						L1.addBlock(new_block);
 					}
 					else{
-						block _block2 = L2.get_LRU_BlockFromSameLine(num);
-						if(_block2 != nullptr){
+						Block _block2 = L2.get_LRU_BlockFromSameLine(num);
+						if(&_block2 != nullptr){
 							if(_block2.isBlockDirty()){
 								/* update memory*/
 							}
 							L2.removeBlock(_block1);
 						}
-						L1.addBlock(block(num));
-						L2.addBlock(block(num, DIRTY));
+						L1.addBlock(Block(num, BSize));
+						L2.addBlock(Block(num, BSize));
+						totalAccTime += MemCyc;
 					}
+					totalAccTime += L2Cyc;
+
 				}
+				totalAccTime += L1Cyc;
 			}
 			else if(WrAlloc == NO_WRITE_ALLOCATE){
-				if(L1.isBlockInCache(num)){ 							 /* Is block in L1 Cache? */
-					block _block1 = L1.getBlockFromAddr(num);
-					// _block1.writeToBlock();
-					_block1.setBlockDirty(true);
+				if(L1.isBlockInCache(num)){ 							 /* Is Block in L1 Cache? */
+					Block _block1 = L1.getBlockFromAddr(num);
+					_block1.writeToBlock();
 				}
-				else if(L2.isBlockInCache(num)){
-						block _block2 = L2.getBlockFromAddr(num);
-						// _block2.writeToBlock();
-						_block2.setBlockDirty(true);
+				else{
+					if(L2.isBlockInCache(num)){
+						Block _block2 = L2.getBlockFromAddr(num);
+						_block2.writeToBlock();
+					}
+					else totalAccTime += MemCyc;
+					totalAccTime += L2Cyc;
 				}
-				// else write to memory
+				totalAccTime += L1Cyc;
 			}
-		if(operation == 'r'){
-			if(L1.isBlockInCache(num)){ 							 /* Is block in L1 Cache? */
-				// read
+		}
+		
+		else if(operation == 'r'){
+			if(L1.isBlockInCache(num)){ 							 /* Is Block in L1 Cache? */
+				Block _block1 = L1.getBlockFromAddr(num);
+				_block1.readBlock();
 			}
 			else{ 
-				block _block1 = L1.get_LRU_BlockFromSameLine(num);
-				if(_block1 != nullptr){ 							/* Evacuate the block that will be replaced */
+				Block _block1 = L1.get_LRU_BlockFromSameLine(num);
+				if(&_block1 != nullptr){ 							/* Evacuate the Block that will be replaced */
 					if(_block1.isBlockDirty()){
-						L2.updateBlock(_block1); /* if block 1 was dirty, block 2 must become dirty itself*/
+						L2.updateBlock(_block1); /* if Block 1 was dirty, Block 2 must become dirty itself*/
 					}
 					L1.removeBlock(_block1);
 				}
-				if(L2.isBlockInCache(num)){ 						/* Is block in L2 Cache? */
-					L1.addBlock(num);
+				if(L2.isBlockInCache(num)){ 						/* Is Block in L2 Cache? */
+					Block _block = L1.getBlockFromAddr(num);
+					_block.readBlock();
+					L1.addBlock(_block);
 				}
 				else{
-					block _block2 = L2.get_LRU_BlockFromSameLine(num);
-					if(_block2 != nullptr){
+					Block _block2 = L2.get_LRU_BlockFromSameLine(num);
+					if(&_block2 != nullptr){
 						if(_block2.isBlockDirty()){
 							/* update memory*/
 						}
 						L2.removeBlock(_block1);
 					}
-					L1.addBlock(block(num));
-					L2.addBlock(block(num));
+					L1.addBlock(Block(num, BSize));
+					L2.addBlock(Block(num, BSize));
+					totalAccTime += MemCyc;
 				}
+				totalAccTime += L2Cyc;
 			}
+			totalAccTime += L1Cyc;
 		}
+
+		ic++;
+	}
+
 /*
 		else Search num in L2
 			if we found it - write or read and update accoring to the policy
 			else go to memory (according to the policy) {
 				write or read
 				build new block
-				bring the block to L2 and L1 
+				bring the Block to L2 and L1 
 			}
 	}
 */
@@ -185,9 +205,10 @@ int main(int argc, char **argv) {
 	double L2MissRate;
 	double avgAccTime;
 
+
 	L1.updateValue(&L1MissRate);
 	L2.updateValue(&L2MissRate);
-
+	avgAccTime = totalAccTime / ic;
 
 	printf("L1miss=%.03f ", L1MissRate);
 	printf("L2miss=%.03f ", L2MissRate);

@@ -1,7 +1,0 @@
-[
-{
-  "directory": "D:/Limud/Third_year/Computer_structure/HW2/build",
-  "command": "g++   -std=c++11  -g -o CMakeFiles\\cache_pred.dir\\cacheSim.cpp.obj -c D:\\Limud\\Third_year\\Computer_structure\\HW2\\cacheSim.cpp",
-  "file": "D:/Limud/Third_year/Computer_structure/HW2/cacheSim.cpp"
-}
-]
