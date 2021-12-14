@@ -39,7 +39,7 @@ public:
     void readBlock();
     void writeToBlock();
     bool isAddrInBlock(const uint32_t addr)const;
-    uint32_t getAddr()const { return first_addr; }
+    uint32_t getFirstAddr()const { return first_addr; }
     bool compareBlockAddress(const uint32_t addr)const { return block_id == getBlockIDByAddr(addr, block_size); }
     bool isBlockDirty()const { return dirty_bit; }
     //int getValue(int offset); 
@@ -211,13 +211,13 @@ bool Cache::isBlockInCache(const uint32_t addr){
 }
 
 void Cache::addBlock(const Block& block){
-    vector<Block> line = findLine(block.getAddr());
+    vector<Block> line = findLine(block.getFirstAddr());
     const Block new_block = block;
     line.insert(new_block);
 }
 
 void Cache::removeBlock(const Block& block){
-    vector<Block> line = findLine(block.getAddr());
+    vector<Block> line = findLine(block.getFirstAddr());
     line.erase(block);
 }
 
@@ -257,7 +257,7 @@ vector<Block>& Cache::findLine(const uint32_t addr){
 void Cache::updateBlock(const Block& block){
     for(auto &line: cache_data){
         for(auto &old_block: line.getLine()){
-            if(old_block.compareBlockAddress(block.getAddr())){
+            if(old_block.compareBlockAddress(block.getFirstAddr())){
                 // old_block = block;
                 old_block.writeToBlock();
             }
