@@ -9,26 +9,19 @@
 using namespace std;
 int current_time = 0; //counter for block accessing
 
-int getBlockIDByAddr (const uint32_t addr, const int block_size){
-    uint32_t i = 0;
-    int block_num = 0;
-    while (i < addr)
-    {
-        i += block_size*8;
-        block_num++;
-    }
-    return block_num;
+int getBlockIDByAddr(const uint32_t addr, const int block_size){
+    return addr / block_size;
 }
 
 uint32_t getBlockFirstAddr(int block_id, int block_size){
-    return block_id*block_size;
+    return block_id * block_size;
 }
 
 class Block{
     int block_id;
     uint32_t first_addr;
     int block_size;
-    vector<int> block_data; // check if needed
+    // vector<int> block_data; // check if needed
     bool dirty_bit;
     int last_access;
 public:
@@ -47,14 +40,12 @@ public:
     void writeToBlock();
     bool isAddrInBlock(const uint32_t addr);
     uint32_t getAddr(){ return first_addr; }
-    bool compareBlockAddress(const uint32_t addr){ return (this->block_id == getBlockIDByAddr(addr)); }
-    // bool willMappedToSameLine(const uint32_t addr);
+    bool compareBlockAddress(const uint32_t addr){ return block_id == getBlockIDByAddr(addr, block_size); }
+    bool willMappedToSameLine(const uint32_t addr);
     bool isBlockDirty(){ return dirty_bit; }
-    //Block& getBlockByID(int block_id);
     //int getValue(int offset); 
     //int getPriority() { return last_access; }
 };
-
 
 Block::Block():block_id(-1), first_addr(0), block_size(0), dirty_bit(false), last_access(0){};
 
@@ -79,7 +70,7 @@ bool Block::operator==(const Block& block){
 }
 
 bool Block::operator!=(const Block& block){
-    return (! *this == block );
+    return (this->block_id != block.block_id);
 }
 
 void Block::makeDirty()
@@ -94,7 +85,7 @@ void Block::makeClean()
 
 bool Block::isAddrInBlock(const uint32_t addr)
 {
-    return ((addr < this->first_addr + 8*(this->block_size)) && addr >= this->first_addr);
+    return (addr < first_addr + block_size && addr >= first_addr);
 }
 
 void Block::readBlock(){
@@ -108,27 +99,23 @@ void Block::writeToBlock(){
     makeDirty();
 }
 
-uint32_t getOffsetBits (uint32_t addr, int block_size)
-{
+uint32_t getOffsetBits (uint32_t addr, int block_size){
     int num_of_bits = log2(block_size*8);
     int to_compare = 1;
     int i = 0;
-    while (i < num_of_bits)
-    {
-        to_compare= to_compare*2;
+    while (i < num_of_bits){
+        to_compare = to_compare*2;
     }
     return (addr ^ to_compare);
 }
 
-uint32_t getSetBits (uint32_t addr, int associativity, int block_size)
-{
+uint32_t getSetBits (uint32_t addr, int associativity, int block_size){
     int offsetBits = log2(block_size*8);
     uint32_t set = addr >> offsetBits;
-    int num_of_bits = log2(associativity*8);
+    int num_of_bits = log2(cache_size / (block_size * associativity) * 8);
     int to_compare = 1;
     int i = 0;
-    while (i < num_of_bits)
-    {
+    while (i < num_of_bits){
         to_compare= to_compare*2;
     }
     return (set ^ to_compare);
@@ -147,6 +134,8 @@ uint32_t getTagBits (uint32_t addr, int associativity, int block_size)
     }
     return (tag ^ to_compare);
 }
+
+
 class CacheEntry{
     vector<Block> line;
     int line_id; 
