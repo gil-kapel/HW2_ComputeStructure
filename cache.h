@@ -43,6 +43,7 @@ public:
     uint32_t getFirstAddr()const { return first_addr; }
     bool compareBlockAddress(const uint32_t addr)const { return block_id == getBlockIDByAddr(addr, block_size); }
     bool isBlockDirty()const { return dirty_bit; }
+    int getLastAccessTime() const {return last_access;};
     //int getValue(int offset); 
     //int getPriority() { return last_access; }
 };
@@ -155,9 +156,10 @@ uint32_t getTagBits (uint32_t addr, int associativity, int block_size, int cache
 
 class CacheEntry{
     vector<Block> line;
-    int line_id; 
+    int line_id;
+    int LRUBlockID; 
 public:
-    CacheEntry(int size, int line_id): line_id(line_id){
+    CacheEntry(int size, int line_id): line_id(line_id), LRUBlockID(-1){
         for(int i=0 ; i < size ; i++){
             line.push_back(Block());
         }
@@ -165,7 +167,19 @@ public:
     ~CacheEntry() = default;
     vector<Block>& getLine(){ return line; }
     int getLineId() { return line_id; }
+    void updateLRUBlock(); //to be used after a block was removed from cache level
 };
+
+void CacheEntry::updateLRUBlock()
+{
+    int min = -1;
+    vector<Block>::iterator it;
+    for (it = line.begin(); it != line.end(); it++)
+    {
+        if (it->getLastAccessTime() < min) min = it->getLastAccessTime();
+    }
+    LRUBlockID = min;
+}
 
 class Cache{
     vector<CacheEntry> cache_data;
