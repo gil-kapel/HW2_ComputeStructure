@@ -28,8 +28,8 @@ public:
     Block();
     Block(const uint32_t addr, const int block_size, bool is_dirty = false);
     ~Block() = default;
-    //Block(const Block& block);
-    //Block& operator=(const Block& block);
+    Block(const Block& block);
+    Block& operator=(const Block& block);
     bool operator>(const Block& block);
     bool operator<(const Block& block);
     bool operator==(const Block& block);
@@ -40,9 +40,9 @@ public:
     void writeToBlock();
     bool isAddrInBlock(const uint32_t addr);
     uint32_t getAddr(){ return first_addr; }
-    bool compareBlockAddress(const uint32_t addr){ return block_id == getBlockIDByAddr(addr, block_size); }
-    bool willMappedToSameLine(const uint32_t addr);
-    bool isBlockDirty(){ return dirty_bit; }
+    bool compareBlockAddress(const uint32_t addr){ return block_id == getBlockIDByAddr(addr, block_size); };
+    bool isBlockDirty(){ return dirty_bit; };
+    uint32_t getFirstAddr() const {return first_addr;};
     //int getValue(int offset); 
     //int getPriority() { return last_access; }
 };
@@ -55,6 +55,22 @@ Block::Block(const uint32_t addr, const int block_size, bool is_dirty): block_si
     block_id = getBlockIDByAddr(addr, block_size);
     first_addr = getBlockFirstAddr(block_id, block_size);
     current_time++;
+}
+
+Block::Block(const Block& block): block_id(block.block_id), block_size(block.block_size), first_addr(block.first_addr),
+                                    last_access(block.last_access), dirty_bit(block.dirty_bit){};
+
+Block& Block::operator=(const Block& block)
+{
+    if (this != &block)
+    {
+        this->first_addr = block.first_addr;
+        this->last_access = block.last_access;
+        this->dirty_bit = block.dirty_bit;
+        this->block_id = block.block_id;
+        this->block_size = block.block_size;
+    }
+    return *this;
 }
 
 bool Block::operator>(const Block& block){
@@ -99,6 +115,8 @@ void Block::writeToBlock(){
     makeDirty();
 }
 
+
+
 uint32_t getOffsetBits (uint32_t addr, int block_size){
     int num_of_bits = log2(block_size*8);
     int to_compare = 1;
@@ -109,10 +127,10 @@ uint32_t getOffsetBits (uint32_t addr, int block_size){
     return (addr ^ to_compare);
 }
 
-uint32_t getSetBits (uint32_t addr, int associativity, int block_size){
+uint32_t getSetBits (uint32_t addr, int associativity, int block_size, int cache_size) {
     int offsetBits = log2(block_size*8);
     uint32_t set = addr >> offsetBits;
-    int num_of_bits = log2(cache_size / (block_size * associativity) * 8);
+    int num_of_bits = log2(cache_size / (block_size * associativity));
     int to_compare = 1;
     int i = 0;
     while (i < num_of_bits){
@@ -121,11 +139,11 @@ uint32_t getSetBits (uint32_t addr, int associativity, int block_size){
     return (set ^ to_compare);
 }
 
-uint32_t getTagBits (uint32_t addr, int associativity, int block_size)
+uint32_t getTagBits (uint32_t addr, int associativity, int block_size, int cache_size)
 {
-    int bits_to_remove = log2(block_size*8) + log2(associativity);
+    int bits_to_remove = log2(block_size*8) + log2(cache_size / (block_size * associativity));
     uint32_t tag = addr >> bits_to_remove;
-    int num_of_bits = 32 - log2(block_size*8) - log2(associativity);
+    int num_of_bits = 32 - bits_to_remove;
     int to_compare = 1;
     int i = 0;
     while (i < num_of_bits)
@@ -180,6 +198,7 @@ public:
     double calculateMissRate() { return missCount / (missCount + hitCount); } /* Need to verify the equation */
     double calculateHitRate(){ return 1 - calculateMissRate(); }
     double averageAccessTime();
+    bool willMappedToSameLine(const uint32_t addr, const Block& block) {return (getSetBits(addr,assoc,block_size,cache_size) == getSetBits(block.getFirstAddr(),assoc,block_size,cache_size))};
 };
 
 bool Cache::isBlockInCache(const uint32_t addr){
