@@ -208,7 +208,7 @@ int main(int argc, char **argv) {
 
 	L1.updateValue(&L1MissRate);
 	L2.updateValue(&L2MissRate);
-	avgAccTime = totalAccTime / ic;
+	if(ic >0) avgAccTime = totalAccTime / ic;
 
 	printf("L1miss=%.03f ", L1MissRate);
 	printf("L2miss=%.03f ", L2MissRate);
