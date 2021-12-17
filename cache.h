@@ -167,6 +167,7 @@ public:
     }
     ~Cache() = default;
     bool isBlockInCache(const uint32_t addr); //increase hit or miss count
+    bool snoopHigherCache(const uint32_t addr); // same as isBlockInCache, without increasing the hit/miss rate
     void addBlock(const Block& block);
     void removeBlock(const Block& block);
     Block& getBlockFromAddr(const uint32_t addr);
@@ -207,6 +208,33 @@ bool Cache::isBlockInCache(const uint32_t addr){
         return false;
     }
     missCount++;
+    return false;
+}
+
+bool Cache::snoopHigherCache(const uint32_t addr){
+    int addr_set = getSetBits(addr, assoc, block_size, cache_size);
+    int addr_tag = getTagBits(addr, assoc, block_size, cache_size);
+
+    if(assoc == cache_size / block_size){
+        for(auto &line: cache_data){
+            if(addr_tag == getTagBits(line.getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){
+                return true;
+            }
+        }
+        return false;
+    }
+    else {
+        for(auto &line: cache_data){
+            for(auto &block: line.getLine()){
+                if(addr_tag == getTagBits(line.getLine()[addr_set].getFirstAddr(), assoc, block_size, cache_size)){ 
+                    hitCount++;
+                    /* Another act? */
+                    return true;
+                } 
+            }
+        }
+        return false;
+    }
     return false;
 }
 
@@ -297,15 +325,15 @@ Block Cache::get_LRU_BlockFromSameLine(const uint32_t addr){
     
     int glob_last_access = INT_MAX;
     Block lru_block = cache_data[0].getLine()[0];
-
-    if(assoc == cache_size / block_size){
-        int size = cache_size / block_size;
+    int size = cache_size / block_size;
+    if(assoc == size){
         for(int i = 0 ; i < size ; i++){
             if( cache_data[i].getLine()[0].getBlockID() == -1 ||                                               //return the first empty cell
                 tag == getTagBits(cache_data[i].getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){  // or the cell with the same tag
                 return cache_data[i].getLine()[0];
             }
         }
+        
     }
     
     else{
