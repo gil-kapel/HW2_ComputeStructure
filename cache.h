@@ -5,6 +5,7 @@
 #include <vector>
 #include <math.h>
 #include <list>
+#include <stdint.h>
 
 using namespace std;
 #define INT_MAX 2147483647
@@ -19,42 +20,30 @@ uint32_t getBlockFirstAddr(int block_id, int block_size){
 }
 
 uint32_t getOffsetBits (uint32_t addr, int block_size){
-    int num_of_bits = log2(block_size*8);
-    int to_compare = 1;
-    int i = 0;
-    while (i < num_of_bits){
-        to_compare = to_compare*2;
-    }
-    return (addr ^ to_compare);
+    int num_of_bits = log2(block_size);
+    int to_compare = pow(2, num_of_bits) - 1;
+    return (addr & to_compare);
 }
 
 uint32_t getSetBits (uint32_t addr, int associativity, int block_size, int cache_size) {
-    int offsetBits = log2(block_size*8);
+    int offsetBits = log2(block_size);
     uint32_t set = addr >> offsetBits;
     int num_of_bits;
     if(associativity == 0) num_of_bits = log2(cache_size / block_size);
-    else num_of_bits = log2(cache_size / block_size * associativity);
-    int to_compare = 1;
-    int i = 0;
-    while (i < num_of_bits){
-        to_compare= to_compare*2;
-    }
-    return (set ^ to_compare);
+    else num_of_bits = log2(cache_size / (block_size * associativity));
+    num_of_bits = log2(cache_size / block_size) - num_of_bits;
+    int to_compare = pow(2, num_of_bits) - 1;
+    return (set & to_compare);
 }
 
 uint32_t getTagBits (uint32_t addr, int associativity, int block_size, int cache_size){
-    int bits_to_remove = log2(block_size*8);
+    int bits_to_remove = log2(block_size);
     if(associativity == 0) bits_to_remove += log2(cache_size / block_size);
-    else bits_to_remove += log2(cache_size / (block_size * associativity));
+    else bits_to_remove += (log2(cache_size / block_size) - log2(cache_size / (block_size * associativity)));
     uint32_t tag = addr >> bits_to_remove;
     int num_of_bits = 32 - bits_to_remove;
-    int to_compare = 1;
-    int i = 0;
-    while (i < num_of_bits)
-    {
-        to_compare= to_compare*2;
-    }
-    return (tag ^ to_compare);
+    int to_compare = pow(2, num_of_bits) - 1;
+    return (tag & to_compare);
 }
 
 class Block{
@@ -87,7 +76,7 @@ public:
     int getLastAccess() const { return last_access; }
 };
 
-Block::Block():block_id(-1), first_addr(0), block_size(0), dirty_bit(false), last_access(0){};
+Block::Block():block_id(-1), first_addr(-1), block_size(0), dirty_bit(false), last_access(0){};
 
 Block::Block(const uint32_t addr, const int block_size, bool is_dirty): block_size(block_size),
                                                                         last_access(current_time), dirty_bit(is_dirty){
@@ -169,26 +158,19 @@ class Cache{
     int cache_size;
     int num_of_lines;
     int assoc;
-    int missCount;
-    int hitCount;
+    double missCount;
+    double hitCount;
 public:
     int block_size;
-    Cache(int cache_size, int block_size, int assoc): cache_size(cache_size), block_size(block_size), assoc(assoc){
+    Cache(int cache_size, int block_size, int assoc): cache_size(pow(2, cache_size)), block_size(pow(2, block_size)), assoc(pow(2,assoc)){
         missCount = 0;
         hitCount = 0;
         int line_in_use = 0;
-        if(assoc = 0) num_of_lines = 1;
-        else num_of_lines = cache_size / (block_size * assoc);
+        if(this->assoc == 0) num_of_lines = 1;
+        else num_of_lines = this->cache_size / (this->block_size * this->assoc);
         for(int i = 0 ; i < num_of_lines ; i++){
-            if(assoc = 0){
-                cache_data.push_back(CacheEntry(cache_size / block_size));
-                return;
-            }
-            else{
-                cache_data.push_back(CacheEntry(assoc));
-            }
+            cache_data.push_back(CacheEntry(this->assoc));
         }
-        cache_data.push_back(CacheEntry(0)); //dummy line - use to search a block that is not in the list.
     }
     ~Cache() = default;
     bool isBlockInCache(const uint32_t addr); //increase hit or miss count
@@ -215,7 +197,10 @@ bool Cache::isBlockInCache(const uint32_t addr){
             hitCount++;
             return true;
         }
-        else return false;
+        else{
+            missCount++;
+            return false;
+        } 
     }
     else if(assoc == 1){
         for(auto &line: cache_data){
@@ -224,6 +209,7 @@ bool Cache::isBlockInCache(const uint32_t addr){
                 return true;
             }
         }
+        missCount++;
         return false;
     }
     else if(assoc > 1) {
@@ -236,8 +222,10 @@ bool Cache::isBlockInCache(const uint32_t addr){
                 } 
             }
         }
+        missCount++;
         return false;
     }
+    missCount++;
     return false;
 }
 
@@ -251,7 +239,7 @@ void Cache::addBlock(const Block& block){
     }
     
     else if(assoc == 1){
-        for(int i= 0 ; i < cache_size ; i++){
+        for(int i= 0 ; i < log2(cache_size) ; i++){
             if(cache_data[i].getLine()[0].getBlockID() == -1){
                 cache_data[i].getLine()[0] = block;
                 return;
@@ -264,14 +252,13 @@ void Cache::addBlock(const Block& block){
     }
     
     else if(assoc > 1){
-        int list_size = cache_size / (block_size * assoc);
-        for(int i= 0 ; i < list_size ; i++){
-            if(cache_data[i].getLine()[set].getBlockID() == -1){
-                cache_data[i].getLine()[set] = block;
+        for(auto &line: cache_data){
+            if(line.getLine()[set].getBlockID() == -1){
+                line.getLine()[set] = block;
                 return;
             }
-            else if(tag == getTagBits(cache_data[set].getLine()[i].getFirstAddr(), assoc, block_size, cache_size)){
-                cache_data[i].getLine()[set] = block;
+            else if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                line.getLine()[set] = block;
                 return;
             }
         }
@@ -288,7 +275,7 @@ void Cache::removeBlock(const Block& block){
     }
     
     else if(assoc == 1){
-        for(int i= 0 ; i < cache_size ; i++){
+        for(int i= 0 ; i < log2(cache_size) ; i++){
             if(cache_data[i].getLine()[0].getBlockID() == -1) return;
             else if(tag == getTagBits(cache_data[i].getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){
                 cache_data[i].getLine()[0] = Block();
@@ -298,11 +285,10 @@ void Cache::removeBlock(const Block& block){
     }
     
     else if(assoc > 1){
-        int list_size = cache_size / (block_size * assoc);
-        for(int i= 0 ; i < list_size ; i++){
-            if(cache_data[i].getLine()[set].getBlockID() == -1) return;
-            else if(tag == getTagBits(cache_data[set].getLine()[i].getFirstAddr(), assoc, block_size, cache_size)){
-                cache_data[i].getLine()[set] = Block();
+        for(auto &line: cache_data){
+            if(line.getLine()[set].getBlockID() == -1) return;
+            else if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                line.getLine()[set] = Block();
                 return;
             }
         }
@@ -316,7 +302,7 @@ Block& Cache::getBlockFromAddr(const uint32_t addr){
     if(assoc == 0) return cache_data[0].getLine()[set];
 
     else if(assoc == 1){
-        for(int i = 0 ; i < cache_size ; i++){
+        for(int i = 0 ; i < log2(cache_size) ; i++){
             if(tag == getTagBits(cache_data[i].getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){
                 return cache_data[i].getLine()[0];
             }
@@ -324,10 +310,9 @@ Block& Cache::getBlockFromAddr(const uint32_t addr){
     }
     
     else if(assoc > 1){
-        int list_size = cache_size / (block_size * assoc);
-        for(int i= 0 ; i < list_size ; i++){
-            if(tag == getTagBits(cache_data[i].getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
-                return cache_data[set].getLine()[i];
+        for(auto &line: cache_data){
+            if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                return line.getLine()[set];
             }
         }
     }
@@ -344,7 +329,7 @@ Block& Cache::get_LRU_BlockFromSameLine(const uint32_t addr){
     Block& lru_block = cache_data[0].getLine()[0];
 
     if(assoc == 1){
-        for(int i = 0 ; i < cache_size ; i++){
+        for(int i = 0 ; i < log2(cache_size) ; i++){
             if(cache_data[i].getLine()[0].getBlockID() == -1){ //return the first empty cell
                 return cache_data[i].getLine()[0];
             }
@@ -357,14 +342,13 @@ Block& Cache::get_LRU_BlockFromSameLine(const uint32_t addr){
     }
     
     else if(assoc > 1){
-        int list_size = cache_size / (block_size * assoc);
-        for(int i= 0 ; i < list_size ; i++){
-            if(cache_data[i].getLine()[set].getBlockID() == -1){ //return the first empty cell
-                return cache_data[i].getLine()[set];
+        for(auto &line: cache_data){
+            if(line.getLine()[set].getBlockID() == -1){ //return the first empty cell
+                return line.getLine()[set];
             }
-            int cur_last_access = cache_data[i].getLine()[set].getLastAccess(); // if the cell isn't empty, find the last recent used
+            int cur_last_access = line.getLine()[set].getLastAccess(); // if the cell isn't empty, find the last recent used
             if(cur_last_access < glob_last_access){
-                lru_block = cache_data[i].getLine()[set];
+                lru_block = line.getLine()[set];
                 glob_last_access = cur_last_access;
             }
         }
@@ -382,7 +366,7 @@ void Cache::updateBlock(const Block& block){
     }
     
     else if(assoc == 1){
-        for(int i= 0 ; i < cache_size ; i++){
+        for(int i = 0 ; i < log2(cache_size) ; i++){
             if(cache_data[i].getLine()[0].getBlockID() == -1) return;  //won't happen, checked in upper functions
             else if(tag == getTagBits(cache_data[i].getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){
                 cache_data[i].getLine()[0].writeToBlock();
@@ -392,11 +376,10 @@ void Cache::updateBlock(const Block& block){
     }
     
     else if(assoc > 1){
-        int list_size = cache_size / (block_size * assoc);
-        for(int i= 0 ; i < list_size ; i++){
-            if(cache_data[i].getLine()[set].getBlockID() == -1) return;  //won't happen, checked in upper functions
-            else if(tag == getTagBits(cache_data[set].getLine()[i].getFirstAddr(), assoc, block_size, cache_size)){
-                cache_data[i].getLine()[set].writeToBlock();
+        for(auto &line: cache_data){
+            if(line.getLine()[set].getBlockID() == -1) return;  //won't happen, checked in upper functions
+            else if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                line.getLine()[set].writeToBlock();
                 return;
             }
         }

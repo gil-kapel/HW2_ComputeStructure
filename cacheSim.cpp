@@ -20,16 +20,17 @@ using std::stringstream;
 
 int main(int argc, char **argv) {
 
-	if (argc < 19) {
-		cerr << "Not enough arguments" << endl;
-		return 0;
-	}
+	// if (argc < 19) {
+	// 	cerr << "Not enough arguments" << endl;
+	// 	return 0;
+	// }
 
+	char arg[20][40] = {"", "../examples/example1_trace", "--mem-cyc", "100", "--bsize", "3", "--wr-alloc", "1", "--l1-size","4", "--l1-assoc", "1", "--l1-cyc", "1", "--l2-size", "6", "--l2-assoc", "0", "--l2-cyc", "5"};
 	// Get input arguments
 
 	// File
 	// Assuming it is the first argument
-	char* fileString = argv[1];
+	char* fileString = arg[1];
 	ifstream file(fileString); //input file stream
 	string line;
 	if (!file || !file.good()) {
@@ -45,25 +46,25 @@ int main(int argc, char **argv) {
 	int totalAccTime = 0;
 
 	for (int i = 2; i < 19; i += 2) {
-		string s(argv[i]);
+		string s(arg[i]);
 		if (s == "--mem-cyc") {
-			MemCyc = atoi(argv[i + 1]);
+			MemCyc = atoi(arg[i + 1]);
 		} else if (s == "--bsize") {
-			BSize = atoi(argv[i + 1]);
+			BSize = atoi(arg[i + 1]);
 		} else if (s == "--l1-size") {
-			L1Size = atoi(argv[i + 1]);
+			L1Size = atoi(arg[i + 1]);
 		} else if (s == "--l2-size") {
-			L2Size = atoi(argv[i + 1]);
+			L2Size = atoi(arg[i + 1]);
 		} else if (s == "--l1-cyc") {
-			L1Cyc = atoi(argv[i + 1]);
+			L1Cyc = atoi(arg[i + 1]);
 		} else if (s == "--l2-cyc") {
-			L2Cyc = atoi(argv[i + 1]);
+			L2Cyc = atoi(arg[i + 1]);
 		} else if (s == "--l1-assoc") {
-			L1Assoc = atoi(argv[i + 1]);
+			L1Assoc = atoi(arg[i + 1]);
 		} else if (s == "--l2-assoc") {
-			L2Assoc = atoi(argv[i + 1]);
+			L2Assoc = atoi(arg[i + 1]);
 		} else if (s == "--wr-alloc") {
-			WrAlloc = atoi(argv[i + 1]);
+			WrAlloc = atoi(arg[i + 1]);
 		} else {
 			cerr << "Error in arguments" << endl;
 			return 0;
@@ -208,7 +209,7 @@ int main(int argc, char **argv) {
 
 	L1.updateValue(&L1MissRate);
 	L2.updateValue(&L2MissRate);
-	if(ic >0) avgAccTime = totalAccTime / ic;
+	if(ic >0) avgAccTime = double(totalAccTime) / double(ic);
 
 	printf("L1miss=%.03f ", L1MissRate);
 	printf("L2miss=%.03f ", L2MissRate);
