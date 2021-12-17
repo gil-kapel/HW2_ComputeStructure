@@ -101,21 +101,20 @@ int main(int argc, char **argv) {
 		if(operation == 'w'){
 			if(WrAlloc == WRITE_ALLOCATE){
 				if(L1.isBlockInCache(num)){ 							 /* Is Block in L1 Cache? */
-					Block _block1 = L1.getBlockFromAddr(num);
-					_block1.writeToBlock();
+					L1.getBlockFromAddr(num).writeToBlock();
 				}
 				else{ 
 					Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 					if(_block1.getBlockID() != -1){ 							/* Evacuate the Block that will be replaced */
 						if(_block1.isBlockDirty()){
 							L2.updateBlock(_block1); /* if Block 1 was dirty, Block 2 must become dirty itself*/
+							totalAccTime += L2Cyc;
 						}
 						L1.removeBlock(_block1);
 					}
 					if(L2.isBlockInCache(num)){ 						/* Is Block in L2 Cache? */
-						Block _block2 = L2.getBlockFromAddr(num);
-						_block2.writeToBlock();
-						Block new_block = Block(_block2);
+						L2.getBlockFromAddr(num).writeToBlock();
+						Block new_block = L2.getBlockFromAddr(num);
 						new_block.makeClean();
 						L1.addBlock(new_block);
 					}
@@ -123,9 +122,9 @@ int main(int argc, char **argv) {
 						Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 						if(_block2.getBlockID() != -1){
 							if(_block2.isBlockDirty()){
-								/* update memory*/
+								totalAccTime += MemCyc;
 							}
-							L2.removeBlock(_block1);
+							L2.removeBlock(_block2);
 						}
 						L1.addBlock(Block(num, BSize));
 						L2.addBlock(Block(num, BSize));
@@ -138,13 +137,11 @@ int main(int argc, char **argv) {
 			}
 			else if(WrAlloc == NO_WRITE_ALLOCATE){
 				if(L1.isBlockInCache(num)){ 							 /* Is Block in L1 Cache? */
-					Block _block1 = L1.getBlockFromAddr(num);
-					_block1.writeToBlock();
+					L1.getBlockFromAddr(num).writeToBlock();
 				}
 				else{
 					if(L2.isBlockInCache(num)){
-						Block _block2 = L2.getBlockFromAddr(num);
-						_block2.writeToBlock();
+						L2.getBlockFromAddr(num).writeToBlock();
 					}
 					else totalAccTime += MemCyc;
 					totalAccTime += L2Cyc;
@@ -155,14 +152,14 @@ int main(int argc, char **argv) {
 		
 		else if(operation == 'r'){
 			if(L1.isBlockInCache(num)){ 							 /* Is Block in L1 Cache? */
-				Block _block1 = L1.getBlockFromAddr(num);
-				_block1.readBlock();
+				L1.getBlockFromAddr(num).readBlock();
 			}
 			else{ 
 				Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 				if(_block1.getBlockID() != -1){ 							/* Evacuate the Block that will be replaced */
 					if(_block1.isBlockDirty()){
 						L2.updateBlock(_block1); /* if Block 1 was dirty, Block 2 must become dirty itself*/
+						totalAccTime += L2Cyc;
 					}
 					L1.removeBlock(_block1);
 				}
@@ -175,19 +172,19 @@ int main(int argc, char **argv) {
 					Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 					if(_block2.getBlockID() != -1){
 						if(_block2.isBlockDirty()){
+							totalAccTime += MemCyc;
 							/* update memory*/
 						}
-						L2.removeBlock(_block1);
+						L2.removeBlock(_block2);
 					}
-					L1.addBlock(Block(num, BSize));
-					L2.addBlock(Block(num, BSize));
+					L1.addBlock(Block(num, pow(2,BSize)));
+					L2.addBlock(Block(num, pow(2,BSize)));
 					totalAccTime += MemCyc;
 				}
 				totalAccTime += L2Cyc;
 			}
 			totalAccTime += L1Cyc;
 		}
-
 		ic++;
 	}
 
