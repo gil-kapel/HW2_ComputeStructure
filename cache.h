@@ -192,7 +192,7 @@ bool Cache::isBlockInCache(const uint32_t addr){
 
     if(assoc == cache_size / block_size){
         for(auto &line: cache_data){
-            if(addr_tag == getTagBits(line.getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){
+            if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[0].getFirstAddr(), block_size)){
                 hitCount++;
                 return true;
             }
@@ -203,7 +203,7 @@ bool Cache::isBlockInCache(const uint32_t addr){
     else {
         for(auto &line: cache_data){
             for(auto &block: line.getLine()){
-                if(addr_tag == getTagBits(line.getLine()[addr_set].getFirstAddr(), assoc, block_size, cache_size)){ 
+                if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[addr_set].getFirstAddr(), block_size)){ 
                     hitCount++;
                     /* Another act? */
                     return true;
@@ -223,7 +223,7 @@ bool Cache::snoopHigherCache(const uint32_t addr){
 
     if(assoc == cache_size / block_size){
         for(auto &line: cache_data){
-            if(addr_tag == getTagBits(line.getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){
+            if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[0].getFirstAddr(), block_size)){
                 return true;
             }
         }
@@ -232,7 +232,7 @@ bool Cache::snoopHigherCache(const uint32_t addr){
     else {
         for(auto &line: cache_data){
             for(auto &block: line.getLine()){
-                if(addr_tag == getTagBits(line.getLine()[addr_set].getFirstAddr(), assoc, block_size, cache_size)){ 
+                if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[addr_set].getFirstAddr(), block_size)){ 
                     hitCount++;
                     /* Another act? */
                     return true;

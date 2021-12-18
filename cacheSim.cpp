@@ -24,13 +24,12 @@ int main(int argc, char **argv) {
 	// 	cerr << "Not enough arguments" << endl;
 	// 	return 0;
 	// }
-
-	char arg[20][40] = {"", "../example1_trace", "--mem-cyc", "100", "--bsize", "3", "--wr-alloc", "1", "--l1-size","4", "--l1-assoc", "1", "--l1-cyc", "1", "--l2-size", "6", "--l2-assoc", "0", "--l2-cyc", "5"};
+	char arg[20][40] = {"", "../tests/test268.in", "--mem-cyc", "97", "--bsize", "3", "--wr-alloc", "1", "--l1-size","5", "--l1-assoc", "1", "--l1-cyc", "41", "--l2-size", "7", "--l2-assoc", "3", "--l2-cyc", "59"};
 	// Get input arguments
 
 	// File
 	// Assuming it is the first argument
-	char* fileString = argv[1];
+	char* fileString = arg[1];
 	ifstream file(fileString); //input file stream
 	string line;
 	if (!file || !file.good()) {
@@ -46,25 +45,25 @@ int main(int argc, char **argv) {
 	int totalAccTime = 0;
 
 	for (int i = 2; i < 19; i += 2) {
-		string s(argv[i]);
+		string s(arg[i]);
 		if (s == "--mem-cyc") {
-			MemCyc = atoi(argv[i + 1]);
+			MemCyc = atoi(arg[i + 1]);
 		} else if (s == "--bsize") {
-			BSize = atoi(argv[i + 1]);
+			BSize = atoi(arg[i + 1]);
 		} else if (s == "--l1-size") {
-			L1Size = atoi(argv[i + 1]);
+			L1Size = atoi(arg[i + 1]);
 		} else if (s == "--l2-size") {
-			L2Size = atoi(argv[i + 1]);
+			L2Size = atoi(arg[i + 1]);
 		} else if (s == "--l1-cyc") {
-			L1Cyc = atoi(argv[i + 1]);
+			L1Cyc = atoi(arg[i + 1]);
 		} else if (s == "--l2-cyc") {
-			L2Cyc = atoi(argv[i + 1]);
+			L2Cyc = atoi(arg[i + 1]);
 		} else if (s == "--l1-assoc") {
-			L1Assoc = atoi(argv[i + 1]);
+			L1Assoc = atoi(arg[i + 1]);
 		} else if (s == "--l2-assoc") {
-			L2Assoc = atoi(argv[i + 1]);
+			L2Assoc = atoi(arg[i + 1]);
 		} else if (s == "--wr-alloc") {
-			WrAlloc = atoi(argv[i + 1]);
+			WrAlloc = atoi(arg[i + 1]);
 		} else {
 			cerr << "Error in arguments" << endl;
 			return 0;
@@ -89,12 +88,12 @@ int main(int argc, char **argv) {
 		unsigned long int num = 0;
 		num = strtoul(cutAddress.c_str(), NULL, 16);
 		
-		// // DEBUG - remove this line
-		// cout << "operation: " << operation;
-		// // DEBUG - remove this line
-		// cout << ", address (hex)" << cutAddress;
-		// // DEBUG - remove this line
-		// cout << " (dec) " << num << endl;
+		// DEBUG - remove this line
+		cout << "operation: " << operation;
+		// DEBUG - remove this line
+		cout << ", address (hex)" << cutAddress;
+		// DEBUG - remove this line
+		cout << " (dec) " << num << endl;
 		
 		if(operation == 'w'){
 			if(WrAlloc == WRITE_ALLOCATE){
@@ -113,6 +112,7 @@ int main(int argc, char **argv) {
 					}
 					L1.addBlock(Block(num, pow(2,BSize)));
 					L2.getBlockFromAddr(num).updateLastAcc();
+					L2.getBlockFromAddr(num).makeClean();
 					L1.getBlockFromAddr(num).writeToBlock();
 					totalAccTime += L1Cyc;
 					totalAccTime += L2Cyc;
@@ -121,8 +121,8 @@ int main(int argc, char **argv) {
 				else{
 					Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 					if(_block2.getBlockID() != -1){
-						Block block2on1 = L1.getBlockFromAddr(num);
-						if(block2on1.getBlockID() != -1){
+						if(L1.snoopHigherCache(_block2.getFirstAddr())){
+							Block block2on1 = L1.getBlockFromAddr(num);
 							if(block2on1.isBlockDirty()){
 								L2.updateBlock(block2on1);
 								// totalAccTime += L2Cyc;
@@ -190,8 +190,8 @@ int main(int argc, char **argv) {
 			else{
 				Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 				if(_block2.getBlockID() != -1){
-					Block block2on1 = L1.getBlockFromAddr(num);
-					if(block2on1.getBlockID() != -1){
+					if(L1.snoopHigherCache(_block2.getFirstAddr())){
+						Block block2on1 = L1.getBlockFromAddr(num);
 						if(block2on1.isBlockDirty()){
 							L2.updateBlock(block2on1);
 							// totalAccTime += L2Cyc;
