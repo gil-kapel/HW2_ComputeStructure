@@ -64,6 +64,7 @@ public:
     void makeClean();
     void readBlock();
     void writeToBlock();
+    void updateLastAcc();
     bool isAddrInBlock(const uint32_t addr)const;
     uint32_t getFirstAddr()const { return first_addr; }
     bool compareBlockAddress(const uint32_t addr)const { return block_id == getBlockIDByAddr(addr, block_size); }
@@ -135,6 +136,11 @@ void Block::writeToBlock(){
     last_access = current_time;
     current_time++;
     makeDirty();
+}
+
+void Block::updateLastAcc(){
+    last_access = current_time;
+    current_time++;
 }
 
 class CacheEntry{
@@ -324,25 +330,23 @@ Block Cache::get_LRU_BlockFromSameLine(const uint32_t addr){
     int tag = getTagBits(addr, assoc, block_size, cache_size);
     
     int glob_last_access = INT_MAX;
-    Block lru_block = cache_data[0].getLine()[0];
+    Block lru_block = cache_data[0].getLine()[set];
     int size = cache_size / block_size;
     if(assoc == size){
         for(int i = 0 ; i < size ; i++){
-            if( cache_data[i].getLine()[0].getBlockID() == -1 ||                                               //return the first empty cell
-                tag == getTagBits(cache_data[i].getLine()[0].getFirstAddr(), assoc, block_size, cache_size)){  // or the cell with the same tag
-                return cache_data[i].getLine()[0];
+            int cur_last_access = cache_data[i].getLine()[0].getLastAccess(); 
+            if(cache_data[i].getLine()[0].getBlockID() == -1) return cache_data[i].getLine()[0];
+            else if(cur_last_access < glob_last_access){
+                lru_block = cache_data[i].getLine()[0];
+                glob_last_access = cur_last_access;                                             
             }
         }
-        
     }
-    
-    else{
+    else if(assoc > 1){
         for(auto &line: cache_data){
-            if(line.getLine()[set].getBlockID() == -1){ //return the first empty cell
-                return line.getLine()[set];
-            }
             int cur_last_access = line.getLine()[set].getLastAccess(); // if the cell isn't empty, find the last recent used
-            if(cur_last_access < glob_last_access){
+            if(line.getLine()[set].getBlockID() == -1) return line.getLine()[set];
+            else if(cur_last_access < glob_last_access){
                 lru_block = line.getLine()[set];
                 glob_last_access = cur_last_access;
             }

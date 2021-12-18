@@ -20,12 +20,12 @@ using std::stringstream;
 
 int main(int argc, char **argv) {
 
-	if (argc < 19) {
-		cerr << "Not enough arguments" << endl;
-		return 0;
-	}
+	// if (argc < 19) {
+	// 	cerr << "Not enough arguments" << endl;
+	// 	return 0;
+	// }
 
-	// char arg[20][40] = {"", "../example1_trace", "--mem-cyc", "100", "--bsize", "3", "--wr-alloc", "1", "--l1-size","4", "--l1-assoc", "1", "--l1-cyc", "1", "--l2-size", "6", "--l2-assoc", "0", "--l2-cyc", "5"};
+	char arg[20][40] = {"", "../example1_trace", "--mem-cyc", "100", "--bsize", "3", "--wr-alloc", "1", "--l1-size","4", "--l1-assoc", "1", "--l1-cyc", "1", "--l2-size", "6", "--l2-assoc", "0", "--l2-cyc", "5"};
 	// Get input arguments
 
 	// File
@@ -84,17 +84,15 @@ int main(int argc, char **argv) {
 			return 0;
 		}
 
-		// DEBUG - remove this line
-		// cout << "operation: " << operation;
-
 		string cutAddress = address.substr(2); // Removing the "0x" part of the address
-
-		// // DEBUG - remove this line
-		// cout << ", address (hex)" << cutAddress;
 
 		unsigned long int num = 0;
 		num = strtoul(cutAddress.c_str(), NULL, 16);
-
+		
+		// // DEBUG - remove this line
+		// cout << "operation: " << operation;
+		// // DEBUG - remove this line
+		// cout << ", address (hex)" << cutAddress;
 		// // DEBUG - remove this line
 		// cout << " (dec) " << num << endl;
 		
@@ -104,48 +102,50 @@ int main(int argc, char **argv) {
 					L1.getBlockFromAddr(num).writeToBlock();
 					totalAccTime += L1Cyc;
 				}
-				
 				else if(L2.isBlockInCache(num)){
-					L2.getBlockFromAddr(num).writeToBlock();
 					Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 					if(_block1.getBlockID() != -1){
 						if(_block1.isBlockDirty()){
 							L2.updateBlock(_block1);
-							totalAccTime += L2Cyc;
+							// totalAccTime += L2Cyc;
 						}
 						L1.removeBlock(_block1);
 					}
 					L1.addBlock(Block(num, pow(2,BSize)));
+					L2.getBlockFromAddr(num).updateLastAcc();
+					L1.getBlockFromAddr(num).writeToBlock();
 					totalAccTime += L1Cyc;
 					totalAccTime += L2Cyc;
 				}
 				
 				else{
-					Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 					Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 					if(_block2.getBlockID() != -1){
+						Block block2on1 = L1.getBlockFromAddr(num);
+						if(block2on1.getBlockID() != -1){
+							if(block2on1.isBlockDirty()){
+								L2.updateBlock(block2on1);
+								// totalAccTime += L2Cyc;
+							}
+							L1.removeBlock(block2on1);
+						}
 						if(_block2.isBlockDirty()){
 							/* update memory*/
-							totalAccTime += L2Cyc;
+							// totalAccTime += MemCyc;
 						}
 						L2.removeBlock(_block2);
-						if(L1.getBlockFromAddr(num).isBlockDirty()){
-							L2.updateBlock(_block1);
-							totalAccTime += L2Cyc;
-						}
-						L1.removeBlock(_block2);
-
 					}
-					else if(_block1.getBlockID() != -1){
+					Block _block1 = L1.get_LRU_BlockFromSameLine(num);
+					if(_block1.getBlockID() != -1){
 						if(_block1.isBlockDirty()){
 							L2.updateBlock(_block1);
-							totalAccTime += L2Cyc;
+							// totalAccTime += L2Cyc;
 						}
 						L1.removeBlock(_block1);
 					}
 					L1.addBlock(Block(num, pow(2,BSize)));
 					L2.addBlock(Block(num, pow(2,BSize)));
-					L2.getBlockFromAddr(num).writeToBlock();
+					L1.getBlockFromAddr(num).writeToBlock();
 					totalAccTime += L1Cyc;
 					totalAccTime += L2Cyc;
 					totalAccTime += MemCyc;
@@ -172,41 +172,43 @@ int main(int argc, char **argv) {
 				L1.getBlockFromAddr(num).readBlock();
 				totalAccTime += L1Cyc;
 			}
-			
 			else if(L2.isBlockInCache(num)){
-				L2.getBlockFromAddr(num).readBlock();
 				Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 				if(_block1.getBlockID() != -1){
 					if(_block1.isBlockDirty()){
 						L2.updateBlock(_block1);
-						totalAccTime += L2Cyc;
+						// totalAccTime += L2Cyc;
 					}
 					L1.removeBlock(_block1);
 				}
+				L2.getBlockFromAddr(num).readBlock();
 				L1.addBlock(Block(num, pow(2,BSize)));
 				totalAccTime += L1Cyc;
 				totalAccTime += L2Cyc;
 			}
 			
 			else{
-				Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 				Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 				if(_block2.getBlockID() != -1){
+					Block block2on1 = L1.getBlockFromAddr(num);
+					if(block2on1.getBlockID() != -1){
+						if(block2on1.isBlockDirty()){
+							L2.updateBlock(block2on1);
+							// totalAccTime += L2Cyc;
+						}
+						L1.removeBlock(block2on1);
+					}
 					if(_block2.isBlockDirty()){
 						/* update memory*/
-						totalAccTime += L2Cyc;
+						// totalAccTime += MemCyc;
 					}
 					L2.removeBlock(_block2);
-					if(L1.getBlockFromAddr(num).isBlockDirty()){
-						L2.updateBlock(_block1);
-						totalAccTime += L2Cyc;
-					}
-					L1.removeBlock(_block2);
 				}
-				else if(_block1.getBlockID() != -1){
+				Block _block1 = L1.get_LRU_BlockFromSameLine(num);
+				if(_block1.getBlockID() != -1){
 					if(_block1.isBlockDirty()){
 						L2.updateBlock(_block1);
-						totalAccTime += L2Cyc;
+						// totalAccTime += L2Cyc;
 					}
 					L1.removeBlock(_block1);
 				}
@@ -217,20 +219,8 @@ int main(int argc, char **argv) {
 				totalAccTime += MemCyc;
 			}
 		}
-		
 		ic++;
 	}
-
-/*
-		else Search num in L2
-			if we found it - write or read and update accoring to the policy
-			else go to memory (according to the policy) {
-				write or read
-				build new block
-				bring the Block to L2 and L1 
-			}
-	}
-*/
 
 	double L1MissRate;
 	double L2MissRate;
