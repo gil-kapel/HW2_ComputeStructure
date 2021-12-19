@@ -191,8 +191,9 @@ bool Cache::isBlockInCache(const uint32_t addr){
     int addr_tag = getTagBits(addr, assoc, block_size, cache_size);
 
     if(assoc == cache_size / block_size){
-        for(auto &line: cache_data){
-            if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[0].getFirstAddr(), block_size)){
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line->getLine()[0].getFirstAddr(), block_size)){
                 hitCount++;
                 return true;
             }
@@ -201,9 +202,11 @@ bool Cache::isBlockInCache(const uint32_t addr){
         return false;
     }
     else {
-        for(auto &line: cache_data){
-            for(auto &block: line.getLine()){
-                if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[addr_set].getFirstAddr(), block_size)){ 
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            vector<Block>::iterator block = line->getLine().begin();
+            for(block; block != line->getLine().end(); block++){
+                if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line->getLine()[addr_set].getFirstAddr(), block_size)){ 
                     hitCount++;
                     /* Another act? */
                     return true;
@@ -222,17 +225,20 @@ bool Cache::snoopHigherCache(const uint32_t addr){
     int addr_tag = getTagBits(addr, assoc, block_size, cache_size);
 
     if(assoc == cache_size / block_size){
-        for(auto &line: cache_data){
-            if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[0].getFirstAddr(), block_size)){
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line->getLine()[0].getFirstAddr(), block_size)){
                 return true;
             }
         }
         return false;
     }
     else {
-        for(auto &line: cache_data){
-            for(auto &block: line.getLine()){
-                if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line.getLine()[addr_set].getFirstAddr(), block_size)){ 
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            vector<Block>::iterator block = line->getLine().begin();
+            for(block; block != line->getLine().end(); block++){
+                if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line->getLine()[addr_set].getFirstAddr(), block_size)){ 
                     hitCount++;
                     /* Another act? */
                     return true;
@@ -263,13 +269,14 @@ void Cache::addBlock(const Block& block){
     }
     
     else{
-        for(auto &line: cache_data){
-            if(line.getLine()[set].getBlockID() == -1){
-                line.getLine()[set] = block;
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            if(line->getLine()[set].getBlockID() == -1){
+                line->getLine()[set] = block;
                 return;
             }
-            else if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
-                line.getLine()[set] = block;
+            else if(tag == getTagBits(line->getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                line->getLine()[set] = block;
                 return;
             }
         }
@@ -292,10 +299,11 @@ void Cache::removeBlock(const Block& block){
     }
     
     else{
-        for(auto &line: cache_data){
-            if(line.getLine()[set].getBlockID() == -1) return;
-            else if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
-                line.getLine()[set] = Block();
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            if(line->getLine()[set].getBlockID() == -1) return;
+            else if(tag == getTagBits(line->getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                line->getLine()[set] = Block();
                 return;
             }
         }
@@ -316,9 +324,10 @@ Block& Cache::getBlockFromAddr(const uint32_t addr){
     }
     
     else{
-        for(auto &line: cache_data){
-            if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
-                return line.getLine()[set];
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            if(tag == getTagBits(line->getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                return line->getLine()[set];
             }
         }
     }
@@ -343,11 +352,12 @@ Block Cache::get_LRU_BlockFromSameLine(const uint32_t addr){
         }
     }
     else if(assoc > 1){
-        for(auto &line: cache_data){
-            int cur_last_access = line.getLine()[set].getLastAccess(); // if the cell isn't empty, find the last recent used
-            if(line.getLine()[set].getBlockID() == -1) return line.getLine()[set];
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            int cur_last_access = line->getLine()[set].getLastAccess(); // if the cell isn't empty, find the last recent used
+            if(line->getLine()[set].getBlockID() == -1) return line->getLine()[set];
             else if(cur_last_access < glob_last_access){
-                lru_block = line.getLine()[set];
+                lru_block = line->getLine()[set];
                 glob_last_access = cur_last_access;
             }
         }
@@ -370,10 +380,11 @@ void Cache::updateBlock(const Block& block){
     }
     
     else{
-        for(auto &line: cache_data){
-            if(line.getLine()[set].getBlockID() == -1) return;  //won't happen, checked in upper functions
-            else if(tag == getTagBits(line.getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
-                line.getLine()[set].writeToBlock();
+        vector<CacheEntry>::iterator line = cache_data.begin();
+        for(line ; line != cache_data.end(); line++){
+            if(line->getLine()[set].getBlockID() == -1) return;  //won't happen, checked in upper functions
+            else if(tag == getTagBits(line->getLine()[set].getFirstAddr(), assoc, block_size, cache_size)){
+                line->getLine()[set].writeToBlock();
                 return;
             }
         }
