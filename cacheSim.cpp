@@ -24,7 +24,6 @@ int main(int argc, char **argv) {
 		cerr << "Not enough arguments" << endl;
 		return 0;
 	}
-	// char arg[20][40] = {"", "../tests/test924.in", "--mem-cyc", "97", "--bsize", "3", "--wr-alloc", "1", "--l1-size","5", "--l1-assoc", "1", "--l1-cyc", "41", "--l2-size", "7", "--l2-assoc", "3", "--l2-cyc", "59"};
 	// Get input arguments
 
 	// File
@@ -37,13 +36,14 @@ int main(int argc, char **argv) {
 		cerr << "File not found" << endl;
 		return 0;
 	}
-
+	//reset cache basics characteristic
 	unsigned MemCyc = 0, BSize = 0, L1Size = 0, L2Size = 0, L1Assoc = 0,
 			L2Assoc = 0, L1Cyc = 0, L2Cyc = 0, WrAlloc = 0;
 
 	int ic = 0 ; //instruction count
 	int totalAccTime = 0;
 
+	//parse characteristics
 	for (int i = 2; i < 19; i += 2) {
 		string s(argv[i]);
 		if (s == "--mem-cyc") {
@@ -88,20 +88,13 @@ int main(int argc, char **argv) {
 		unsigned long int num = 0;
 		num = strtoul(cutAddress.c_str(), NULL, 16);
 		
-		// // DEBUG - remove this line
-		// cout << "operation: " << operation;
-		// // DEBUG - remove this line
-		// cout << ", address (hex)" << cutAddress;
-		// // DEBUG - remove this line
-		// cout << " (dec) " << num << endl;
-		
 		if(operation == 'w'){
 			if(WrAlloc == WRITE_ALLOCATE){
 				if(L1.isBlockInCache(num)){ 							 /* Is Block in L1 Cache? */
 					L1.getBlockFromAddr(num).writeToBlock();
 					totalAccTime += L1Cyc;
 				}
-				else if(L2.isBlockInCache(num)){
+				else if(L2.isBlockInCache(num)){						 /* Is Block in L2 Cache? */
 					Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 					L1.removeBlock(_block1);
 					L1.addBlock(Block(num, pow(2,BSize)));
@@ -111,7 +104,6 @@ int main(int argc, char **argv) {
 					if(_block1.getBlockID() != -1){
 						if(_block1.isBlockDirty()){
 							L2.updateBlock(_block1);
-							// totalAccTime += L2Cyc;
 						}
 					}
 
@@ -120,13 +112,13 @@ int main(int argc, char **argv) {
 				}
 				
 				else{
+					//requested block is in memory
 					Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 					if(_block2.getBlockID() != -1){
 						if(L1.snoopHigherCache(_block2.getFirstAddr())){
 							Block block2on1 = L1.getBlockFromAddr(num);
 							if(block2on1.isBlockDirty()){
 								L2.updateBlock(block2on1);
-								// totalAccTime += L2Cyc;
 							}
 							L1.removeBlock(block2on1);
 						}
@@ -144,7 +136,6 @@ int main(int argc, char **argv) {
 					if(_block1.getBlockID() != -1){
 						if(_block1.isBlockDirty()){
 							L2.updateBlock(_block1);
-							// totalAccTime += L2Cyc;
 						}
 					}
 
@@ -159,10 +150,10 @@ int main(int argc, char **argv) {
 				}
 				
 				else{
-					if(L2.isBlockInCache(num)){
+					if(L2.isBlockInCache(num)){							/* Is Block in L2 Cache? */
 						L2.getBlockFromAddr(num).writeToBlock();
 					}
-					else totalAccTime += MemCyc;
+					else totalAccTime += MemCyc;						/* block is in memory */
 					totalAccTime += L2Cyc;
 				}
 				totalAccTime += L1Cyc;
@@ -174,7 +165,7 @@ int main(int argc, char **argv) {
 				L1.getBlockFromAddr(num).readBlock();
 				totalAccTime += L1Cyc;
 			}
-			else if(L2.isBlockInCache(num)){
+			else if(L2.isBlockInCache(num)){						/* Is Block in L2 Cache? */
 				L2.getBlockFromAddr(num).readBlock();
 				Block _block1 = L1.get_LRU_BlockFromSameLine(num);
 				L1.removeBlock(_block1);
@@ -182,7 +173,6 @@ int main(int argc, char **argv) {
 				if(_block1.getBlockID() != -1){
 					if(_block1.isBlockDirty()){
 						L2.updateBlock(_block1);
-						// totalAccTime += L2Cyc;
 					}
 				}
 				totalAccTime += L1Cyc;
@@ -190,13 +180,13 @@ int main(int argc, char **argv) {
 			}
 			
 			else{
+				// block is in memory
 				Block _block2 = L2.get_LRU_BlockFromSameLine(num);
 				if(_block2.getBlockID() != -1){
 					if(L1.snoopHigherCache(_block2.getFirstAddr())){
 						Block block2on1 = L1.getBlockFromAddr(num);
 						if(block2on1.isBlockDirty()){
 							L2.updateBlock(block2on1);
-							// totalAccTime += L2Cyc;
 						}
 						L1.removeBlock(block2on1);
 					}
@@ -213,7 +203,6 @@ int main(int argc, char **argv) {
 				if(_block1.getBlockID() != -1){
 					if(_block1.isBlockDirty()){
 						L2.updateBlock(_block1);
-						// totalAccTime += L2Cyc;
 					}
 				}
 				totalAccTime += L1Cyc;
@@ -231,7 +220,7 @@ int main(int argc, char **argv) {
 
 	L1.updateValue(&L1MissRate);
 	L2.updateValue(&L2MissRate);
-	if(ic >0) avgAccTime = double(totalAccTime) / double(ic);
+	if(ic > 0) avgAccTime = double(totalAccTime) / double(ic);
 
 	printf("L1miss=%.03f ", L1MissRate);
 	printf("L2miss=%.03f ", L2MissRate);

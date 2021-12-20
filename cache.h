@@ -11,20 +11,46 @@ using namespace std;
 #define INT_MAX 2147483647
 int current_time = 0; //counter for block accessing
 
+/**
+ * getBlockIDByAddr(): calculate to which block in the memory, does the given addr belongs to
+ * @param addr - current address to calculate it's block
+ * @param block_size - the size of each block in the the cache's systems
+ * @return - the block number suitible to the given address
+ * */
 int getBlockIDByAddr(const uint32_t addr, const int block_size){
     return addr / block_size;
 }
 
+/**
+ * getBlockFirstAddr(): calculate the first address in a given block
+ * @param block_id - block number to cacluate it's first address
+ * @param block_size - the size of each block in the the cache's systems
+ * @return - the block first address
+ * */
 uint32_t getBlockFirstAddr(int block_id, int block_size){
     return block_id * block_size;
 }
 
+/**
+ * getOffsetBits(): calculate offset bits of given address
+ * @param addr - current address to calculate it's bits
+ * @param block_size - the size of each block in the the cache's systems
+ * @return - address offset bits
+ * */
 uint32_t getOffsetBits (uint32_t addr, int block_size){
     int num_of_bits = log2(block_size);
     int to_compare = pow(2, num_of_bits) - 1;
     return (addr & to_compare);
 }
 
+/**
+ * getSetBits(): calculate set bits of given address
+ * @param addr - current address to calculate it's bits
+ * @param associativity - the associativity level in the the cache's systems
+ * @param block_size - the size of each block in the the cache's systems
+ * @param cache_size - current cache size
+ * @return - address set bits
+ * */
 uint32_t getSetBits (uint32_t addr, int associativity, int block_size, int cache_size) {
     int offsetBits = log2(block_size);
     uint32_t set = addr >> offsetBits;
@@ -33,6 +59,14 @@ uint32_t getSetBits (uint32_t addr, int associativity, int block_size, int cache
     return (set & to_compare);
 }
 
+/**
+ * getTagBits(): calculate tag bits of given address
+ * @param addr - current address to calculate it's bits
+ * @param associativity - the associativity level in the the cache's systems
+ * @param block_size - the size of each block in the the cache's systems
+ * @param cache_size - current cache size
+ * @return - address tag bits
+ * */
 uint32_t getTagBits (uint32_t addr, int associativity, int block_size, int cache_size){
     int bits_to_remove = log2(block_size);
     bits_to_remove += log2(cache_size / (block_size * associativity));
@@ -42,11 +76,18 @@ uint32_t getTagBits (uint32_t addr, int associativity, int block_size, int cache
     return (tag & to_compare);
 }
 
+/**
+ * Block class
+ * @arg block_id    - block's number in the memory
+ * @arg first_addr  - block's first address in memory
+ * @arg block_size  - the size of each block in the the cache's systems
+ * @arg dirty_bit   - TRUE if the block's information in the lower level is not valid, FALSE otherwise
+ * @arg last_access - used for comparision. recently accessed blocks will have a greater number.
+ * */
 class Block{
     int block_id;
     uint32_t first_addr;
     int block_size;
-    // vector<int> block_data; // check if needed
     bool dirty_bit;
     int last_access;
 public:
@@ -143,6 +184,10 @@ void Block::updateLastAcc(){
     current_time++;
 }
 
+/**
+ * CacheEntry class - represent a line in cache
+ * @arg line    - vector of blocks
+ * */
 class CacheEntry{
     vector<Block> line;
 public:
@@ -155,6 +200,15 @@ public:
     vector<Block>& getLine(){ return line; }
 };
 
+/**
+ * Cache class
+ * @arg cache_data  - vector of cache entries (lines)
+ * @arg cache_size  - the size of the cache, as set in the begginning
+ * @arg num_of_lines
+ * @arg assoc       - cache associativity level
+ * @arg missCount   - count how many times the cache has been accssessed, yet the requested block was not found
+ * @arg hitCount    - count how many times the cache has been accssessed, and the requested block was found
+ * */
 class Cache{
     vector<CacheEntry> cache_data;
     int cache_size;
@@ -208,7 +262,6 @@ bool Cache::isBlockInCache(const uint32_t addr){
             for(block; block != line->getLine().end(); block++){
                 if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line->getLine()[addr_set].getFirstAddr(), block_size)){ 
                     hitCount++;
-                    /* Another act? */
                     return true;
                 } 
             }
@@ -219,6 +272,7 @@ bool Cache::isBlockInCache(const uint32_t addr){
     missCount++;
     return false;
 }
+
 
 bool Cache::snoopHigherCache(const uint32_t addr){
     int addr_set = getSetBits(addr, assoc, block_size, cache_size);
@@ -240,7 +294,6 @@ bool Cache::snoopHigherCache(const uint32_t addr){
             for(block; block != line->getLine().end(); block++){
                 if(getBlockIDByAddr(addr, block_size) == getBlockIDByAddr(line->getLine()[addr_set].getFirstAddr(), block_size)){ 
                     hitCount++;
-                    /* Another act? */
                     return true;
                 } 
             }
